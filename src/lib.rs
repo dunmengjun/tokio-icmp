@@ -6,7 +6,7 @@
 //! Note, sending and receiving ICMP packets requires privileges.
 //!
 //! ```rust,no_run
-//! use futures::{future, StreamExt};
+//! use futures_util::{future, StreamExt};
 //!
 //! #[tokio::main]
 //! async fn main() {

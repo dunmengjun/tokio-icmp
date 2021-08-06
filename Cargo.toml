@@ -15,7 +15,7 @@ futures-util = "0.3"
 libc = "0.2"
 mio = { version = "0.7", features = ["os-ext"] }
 fastrand = "1.5"
-socket2 = { version = "0.4", features = ["all"] }
+socket2 = { git = "https://github.com/dunmengjun/socket2.git", features = ["all"] }
 tokio = { version = "1.9", features = ["rt", "time", "net", "sync"] }
 thiserror = "1"
 

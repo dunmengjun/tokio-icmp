@@ -348,9 +348,11 @@ impl Pinger {
         let deadline = Instant::now() + timeout;
 
         let vec: Vec<u8> = repeat_with(|| fastrand::u8(..)).take(24).collect();
-        let token: Token = vec.try_into().unwrap_or_else(|v: Vec<u8>| {
-            panic!("Expected a Vec of length {} but it was {}", 4, v.len())
-        });
+        let boxed_array: Box<Token> = match vec.into_boxed_slice().try_into() {
+            Ok(ba) => ba,
+            Err(o) => panic!("Expected a Vec of length {} but it was {}", 24, o.len()),
+        };
+        let token: Token = *boxed_array;
         self.inner.state.insert(token, sender);
 
         let dest = SocketAddr::new(hostname, 0);
