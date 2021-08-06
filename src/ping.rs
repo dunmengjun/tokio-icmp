@@ -3,27 +3,28 @@ use std::io;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
-use futures::channel::oneshot;
-use futures::future::{select, Future, FutureExt};
-use futures::stream::Stream;
-use parking_lot::Mutex;
-use rand::random;
 use socket2::{Domain, Protocol, Type};
+use std::iter::repeat_with;
 
 use tokio::time::{sleep_until, Sleep};
-
+use tokio::sync::oneshot;
 use crate::Error;
 use crate::packet::{EchoReply, EchoRequest, IcmpV4, IcmpV6, ICMP_HEADER_SIZE};
 use crate::packet::{IpV4Packet, IpV4Protocol};
 use crate::socket::{Send, Socket};
+use futures_util::stream::Stream;
+use futures_util::future::{select, Future, FutureExt};
+use std::convert::TryInto;
+
 
 const DEFAULT_TIMEOUT: u64 = 2;
 const TOKEN_SIZE: usize = 24;
 const ECHO_REQUEST_BUFFER_SIZE: usize = ICMP_HEADER_SIZE + TOKEN_SIZE;
+
 type Token = [u8; TOKEN_SIZE];
 type EchoRequestBuffer = [u8; ECHO_REQUEST_BUFFER_SIZE];
 
@@ -40,11 +41,11 @@ impl PingState {
     }
 
     fn insert(&self, key: Token, value: oneshot::Sender<Instant>) {
-        self.inner.lock().insert(key, value);
+        self.inner.lock().unwrap().insert(key, value);
     }
 
     fn remove(&self, key: &[u8]) -> Option<oneshot::Sender<Instant>> {
-        self.inner.lock().remove(key)
+        self.inner.lock().unwrap().remove(key)
     }
 }
 
@@ -82,7 +83,7 @@ impl Future for PingFuture {
                         Poll::Pending => (),
                         Poll::Ready(Ok(_)) => swap_send = true,
                         Poll::Ready(Err(_)) => {
-                            return Poll::Ready(Err(Error::InternalError))
+                            return Poll::Ready(Err(Error::InternalError));
                         }
                     }
                 }
@@ -94,10 +95,10 @@ impl Future for PingFuture {
                 match Pin::new(&mut normal.receiver).poll(cx) {
                     Poll::Pending => (),
                     Poll::Ready(Ok(stop_time)) => {
-                        return Poll::Ready(Ok(Some(stop_time - normal.start_time)))
+                        return Poll::Ready(Ok(Some(stop_time - normal.start_time)));
                     }
                     Poll::Ready(Err(_)) => {
-                        return Poll::Ready(Err(Error::InternalError))
+                        return Poll::Ready(Err(Error::InternalError));
                     }
                 }
 
@@ -107,10 +108,10 @@ impl Future for PingFuture {
                 }
             }
             PingFutureKind::InvalidProtocol => {
-                return Poll::Ready(Err(Error::InvalidProtocol))
+                return Poll::Ready(Err(Error::InvalidProtocol));
             }
             PingFutureKind::PacketEncodeError => {
-                return Poll::Ready(Err(Error::InternalError))
+                return Poll::Ready(Err(Error::InternalError));
             }
         }
         Poll::Pending
@@ -172,7 +173,7 @@ impl PingChain {
         let ident = match self.ident {
             Some(ident) => ident,
             None => {
-                let ident = random();
+                let ident = fastrand::u16(..);
                 self.ident = Some(ident);
                 ident
             }
@@ -346,7 +347,10 @@ impl Pinger {
 
         let deadline = Instant::now() + timeout;
 
-        let token = random();
+        let vec: Vec<u8> = repeat_with(|| fastrand::u8(..)).take(24).collect();
+        let token: Token = vec.try_into().unwrap_or_else(|v: Vec<u8>| {
+            panic!("Expected a Vec of length {} but it was {}", 4, v.len())
+        });
         self.inner.state.insert(token, sender);
 
         let dest = SocketAddr::new(hostname, 0);
@@ -377,7 +381,7 @@ impl Pinger {
             None => {
                 return PingFuture {
                     inner: PingFutureKind::InvalidProtocol,
-                }
+                };
             }
         };
 

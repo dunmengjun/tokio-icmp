@@ -1,5 +1,5 @@
 [package]
-name = "tokio-icmp-echo"
+name = "tokio-icmp"
 version = "0.4.0"
 license = "MIT/Apache-2.0"
 authors = ["Fedor Gogolev <knsd@knsd.net>", "Jan Christian Grünhage <jan.christian@gruenhage.xyz"]
@@ -11,14 +11,13 @@ categories = ["network-programming", "asynchronous"]
 edition = "2018"
 
 [dependencies]
-futures = "0.3"
+futures-util = "0.3"
 libc = "0.2"
 mio = { version = "0.7", features = ["os-ext"] }
-rand = "0.8"
+fastrand = "1.5"
 socket2 = { version = "0.4", features = ["all"] }
-tokio = { version = "1.5", features = ["rt", "time", "net"] }
-parking_lot = "0.11"
+tokio = { version = "1.9", features = ["rt", "time", "net", "sync"] }
 thiserror = "1"
 
 [dev-dependencies]
-tokio = { version = "1.5", features = ["rt-multi-thread", "time", "macros"] }
+tokio = { version = "1.9", features = ["rt-multi-thread", "time", "macros"] }
